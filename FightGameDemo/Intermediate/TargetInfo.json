@@ -1,0 +1,14 @@
+{
+	"Targets": [
+		{
+			"Name": "FightGameDemo",
+			"Path": "F:\\UE5\\FightGameDemo\\Source\\FightGameDemo.Target.cs",
+			"Type": "Game"
+		},
+		{
+			"Name": "FightGameDemoEditor",
+			"Path": "F:\\UE5\\FightGameDemo\\Source\\FightGameDemoEditor.Target.cs",
+			"Type": "Editor"
+		}
+	]
+}
