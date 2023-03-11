@@ -34,8 +34,9 @@ void UFightCoreComponent::BeginPlay()
 	{
 		InputComponentRef = Cast<UInputComponent>(GetOwner()->GetComponentByClass(UInputComponent::StaticClass()));
 		BindInput();
-	}
 
+		InitData();
+	}
 }
 
 void UFightCoreComponent::MapInput()
@@ -70,6 +71,24 @@ void UFightCoreComponent::MapInput()
 	}
 }
 
+void UFightCoreComponent::MapActionInput()
+{
+	check(InputComponentRef);
+
+	if (PlayerPosition == EPlayerPosition::PlayerPosition_Left)
+	{
+		InputActionData = InputData;
+	}
+	else
+	{
+		uint8 IsForward = (InputData & (uint8)EInputConfig::InputConfig_Left) ? (uint8)EActionInputConfig::ActionInputConfig_Forward : 0;
+		uint8 IsBack = (InputData & (uint8)EInputConfig::InputConfig_Right) ? (uint8)EActionInputConfig::ActionInputConfig_Back : 0;
+
+		InputActionData = InputData & ~((uint8)EInputConfig::InputConfig_Left | (uint8)EInputConfig::InputConfig_Right) | IsForward | IsBack;
+
+	}
+}
+
 void UFightCoreComponent::BindInput()
 {
 	check(InputComponentRef);
@@ -94,6 +113,16 @@ void UFightCoreComponent::BindInput()
 	}
 }
 
+void UFightCoreComponent::InitData()
+{
+	FightActionInputTriggerInstances;
+	FightActionInputTriggerInstances.Reserve(FightActionInputTriggerArray.Num());
+	for (auto FightActionInputTrigger : FightActionInputTriggerArray)
+	{
+		FightActionInputTriggerInstances.Push(Cast<UFightActionInputTrigger>(NewObject<UFightActionInputTrigger>(this, FightActionInputTrigger)));
+	}
+}
+
 // Called every frame
 void UFightCoreComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -102,13 +131,44 @@ void UFightCoreComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	// ...
 	MapInput();
 
-#if WITH_EDITOR
+	MapActionInput();
 
+	for (UFightActionInputTrigger* FightActionInputTriggerInstance : FightActionInputTriggerInstances)
+	{
+		EFightActionInputTriggerCheckResult FightActionInputTriggerCheckResult = FightActionInputTriggerInstance->ReciveInput(InputActionData);
+		
+		switch (FightActionInputTriggerCheckResult)
+		{
+		case EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Completed:
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5,
+				FColor::Green,
+				TEXT("Completd")
+			);
+			break;
+		case EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Failed:
+			break;
+		case EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Success:
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5,
+				FColor::Green,
+				TEXT("Success")
+			);
+			break;
+		case EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_None:
+		default:
+			break;
+		}
+	} 
+
+#if WITH_EDITOR
 	char output[9];
 	itoa((int)InputData, output, 2);
 
 	auto outstring = FString(output);
-	int loop = 9 - outstring.Len();
+	int loop = 8 - outstring.Len();
 
 	FString out;
 	for (int i = 0; i < loop; i++)
@@ -121,8 +181,27 @@ void UFightCoreComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 		-1,
 		0,
 		FColor::Green,
-		TEXT("InputData:") + out + outstring
+		TEXT("            InputData:") + out + outstring
 		);
+
+	itoa((int)InputActionData, output, 2);
+
+	outstring = FString(output);
+	loop = 8 - outstring.Len();
+
+	out = "";
+	for (int i = 0; i < loop; i++)
+	{
+		out += "0";
+	}
+
+
+	GEngine->AddOnScreenDebugMessage(
+		-1,
+		0,
+		FColor::Green,
+		TEXT("InputActionData:") + out + outstring
+	);
 #endif // WITH_EDITOR
 }
 
