@@ -115,11 +115,13 @@ void UFightCoreComponent::BindInput()
 
 void UFightCoreComponent::InitData()
 {
-	FightActionInputTriggerInstances;
 	FightActionInputTriggerInstances.Reserve(FightActionInputTriggerArray.Num());
 	for (auto FightActionInputTrigger : FightActionInputTriggerArray)
 	{
-		FightActionInputTriggerInstances.Push(Cast<UFightActionInputTrigger>(NewObject<UFightActionInputTrigger>(this, FightActionInputTrigger)));
+		UFightActionInputTrigger* Data = Cast<UFightActionInputTrigger>(NewObject<UFightActionInputTrigger>(this, FightActionInputTrigger));
+		Data->SetUpData();
+
+		FightActionInputTriggerInstances.Push(Data);
 	}
 }
 
@@ -148,6 +150,20 @@ void UFightCoreComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 			);
 			break;
 		case EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Failed:
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5,
+				FColor::Green,
+				TEXT("Faild")
+			);
+			break;
+		case EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_TimeOut:
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5,
+				FColor::Green,
+				TEXT("Time Out")
+			);
 			break;
 		case EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Success:
 			GEngine->AddOnScreenDebugMessage(

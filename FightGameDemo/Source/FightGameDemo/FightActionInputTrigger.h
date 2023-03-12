@@ -14,6 +14,7 @@ enum class EFightActionInputTriggerCheckResult : uint8
 	FightActionInputTriggerCheckResult_None,
 	FightActionInputTriggerCheckResult_Completed,
 	FightActionInputTriggerCheckResult_Failed,
+	FightActionInputTriggerCheckResult_TimeOut,
 	FightActionInputTriggerCheckResult_Success,
 };
 
@@ -120,7 +121,9 @@ public:
 	UFUNCTION()
 	EFightActionInputTriggerCheckResult ReciveInput(uint8 ActionInputData);
 
-	void PostLoad() override;
+	virtual void PostLoad() override;
+
+	bool SetUpData();
 
 protected:
 	int CurrentCheckInputIndex = -1;

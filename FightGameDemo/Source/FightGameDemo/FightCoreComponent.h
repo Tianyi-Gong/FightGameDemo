@@ -35,7 +35,7 @@ public:
 		TArray<UFightActionInputTrigger *> FightActionInputTriggerInstances;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InputConfig)
-		EPlayerPosition PlayerPosition = EPlayerPosition::PlayerPosition_Right;
+		EPlayerPosition PlayerPosition = EPlayerPosition::PlayerPosition_Left;
 
 protected:
 	// Called when the game starts
