@@ -18,7 +18,6 @@ enum class EFightActionInputTriggerCheckResult : uint8
 	FightActionInputTriggerCheckResult_Success,
 };
 
-
 USTRUCT(BlueprintType)
 struct FIGHTGAMEDEMO_API FInputCheckConfig
 {
@@ -43,6 +42,14 @@ struct FIGHTGAMEDEMO_API FInputCheckConfig
 
 	}
 
+	FInputCheckConfig(int InMaxCheckFrame) :
+		InputConfig(EActionInputConfig::ActionInputConfig_None),
+		PreInputConfig(EActionInputConfig::ActionInputConfig_None),
+		CurrentCheckFrame(0)
+	{
+		MaxCheckFrame = InMaxCheckFrame;
+	}
+
 	FInputCheckConfig(const FInputCheckConfig& CurrentInputCheckConfig, const FInputCheckConfig& PreInputCheckConfig)
 	{
 		InputConfig = CurrentInputCheckConfig.InputConfig;
@@ -62,7 +69,7 @@ struct FIGHTGAMEDEMO_API FInputCheckConfig
 	void SetUp(const FInputCheckConfig& InputCheckConfig)
 	{
 		InputConfig = InputCheckConfig.InputConfig;
-		PreInputConfig = InputCheckConfig.InputConfig;
+		PreInputConfig = InputCheckConfig.PreInputConfig;
 		MaxCheckFrame = InputCheckConfig.MaxCheckFrame;
 		CurrentCheckFrame = 0;
 	}
@@ -75,35 +82,61 @@ struct FIGHTGAMEDEMO_API FInputCheckConfig
 		}
 
 		EInputCheckResult checkResult;
-		if (InputData == (uint8)EActionInputConfig::ActionInputConfig_None &&
-			InputConfig != EActionInputConfig::ActionInputConfig_None)
+
+		if (bUseSimplifyMatch)
 		{
-			checkResult = EInputCheckResult::InputCheckResult_None;
-		}
-		else if(InputData & (uint8)PreInputConfig)
-		{
-			checkResult = EInputCheckResult::InputCheckResult_None;
-		}
-		else
-		{
-			if (bUseSimplifyMatch)
-			{
-				checkResult = (InputData & (uint8)InputConfig) ? EInputCheckResult::InputCheckResult_Success : EInputCheckResult::InputCheckResult_Failed;
-			}
-			else
+			if (InputConfig == EActionInputConfig::ActionInputConfig_None)
 			{
 				checkResult = (InputData == (uint8)InputConfig) ? EInputCheckResult::InputCheckResult_Success : EInputCheckResult::InputCheckResult_Failed;
 			}
+			else
+			{
+				checkResult = (InputData & (uint8)InputConfig) ? EInputCheckResult::InputCheckResult_Success : EInputCheckResult::InputCheckResult_Failed;
+			}
 		}
-		return checkResult;
+		else
+		{
+			checkResult = (InputData == (uint8)InputConfig) ? EInputCheckResult::InputCheckResult_Success : EInputCheckResult::InputCheckResult_Failed;
+		}
+
+		if (checkResult != EInputCheckResult::InputCheckResult_Success)
+		{
+			if (InputData == (uint8)EActionInputConfig::ActionInputConfig_None &&
+				InputConfig != EActionInputConfig::ActionInputConfig_None)
+			{
+				checkResult = EInputCheckResult::InputCheckResult_None;
+				return checkResult;
+			}
+
+			if ( (InputData & (uint8)PreInputConfig) ||
+				 (InputData & (uint8)InputConfig))
+			{
+				checkResult = EInputCheckResult::InputCheckResult_None;
+			}
+
+			return checkResult;
+		}
+		else
+		{
+			return checkResult;
+		}
 	}
 
-	void CheckFrameAdd()
+	bool CheckFrameAdd()
 	{
 		CurrentCheckFrame++;
+
+		return CurrentCheckFrame >= MaxCheckFrame ? true : false;
 	}
 };
 
+UENUM(BlueprintType)
+enum class EFightActionInputTriggerState : uint8
+{
+	FightActionInputTriggerState_Idle,
+	FightActionInputTriggerState_InProgress,
+	FightActionInputTriggerState_Complete
+};
 /**
  * 
  */
@@ -114,6 +147,9 @@ class UFightActionInputTrigger : public UObject
 
 public:
 	UFightActionInputTrigger();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InputConfig)
+		EFightActionInputTriggerState FightActionInputTriggerState = EFightActionInputTriggerState::FightActionInputTriggerState_Idle;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InputConfig)
 		TArray<FInputCheckConfig> CheckInputConfig;
@@ -135,4 +171,6 @@ protected:
 	int CurrentLastDirectionInputIndex = -1;
 
 	FInputCheckConfig CurrentCheckInputConfig;
+
+	uint8 PreCheckInputData;
 };

@@ -12,18 +12,74 @@ UFightActionInputTrigger::UFightActionInputTrigger():
 EFightActionInputTriggerCheckResult UFightActionInputTrigger::ReciveInput(uint8 ActionInputData)
 {
 	check(CurrentCheckInputIndex != -1);
+	if (ActionInputData == PreCheckInputData &&
+		FightActionInputTriggerState == EFightActionInputTriggerState::FightActionInputTriggerState_InProgress)
+	{
+		bool isTimeOut = CurrentCheckInputConfig.CheckFrameAdd();
 
+		if (!isTimeOut)
+		{
+			return EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_None;
+		}
+		else
+		{
+			PreCheckInputData = 0;
+			CurrentCheckInputIndex = 0;
+			CurrentLastCheckInputIndex = LastCheckInputIndex;
+			CurrentLastDirectionInputIndex = LastDirectionInputIndex;
 
-	if (CurrentCheckInputIndex == 0 &&
+			CurrentCheckInputConfig = CheckInputConfig[CurrentCheckInputIndex];
+
+			FightActionInputTriggerState = EFightActionInputTriggerState::FightActionInputTriggerState_Idle;
+
+			return EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_TimeOut;
+		}
+	}
+
+	PreCheckInputData = ActionInputData;
+
+	if (FightActionInputTriggerState == EFightActionInputTriggerState::FightActionInputTriggerState_Idle &&
 		ActionInputData == 0)
 	{
 		return EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_None;
 	}
+	else if(FightActionInputTriggerState == EFightActionInputTriggerState::FightActionInputTriggerState_Complete)
+	{
+		if (ActionInputData != 0)
+		{
+			FInputCheckConfig& LastDirectionInputCheckConfig = CheckInputConfig[LastDirectionInputIndex];
+				
+			EInputCheckResult Resutlt = LastDirectionInputCheckConfig.CheckInput(ActionInputData);
 
+			if (Resutlt == EInputCheckResult::InputCheckResult_Success)
+			{
+				return EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_None;
+			}
+
+			FInputCheckConfig& LastCheckInputCheckConfig = CheckInputConfig[LastCheckInputIndex];
+
+			Resutlt = LastCheckInputCheckConfig.CheckInput(ActionInputData);
+
+			if (Resutlt != EInputCheckResult::InputCheckResult_Success)
+			{
+				FightActionInputTriggerState = EFightActionInputTriggerState::FightActionInputTriggerState_Idle;
+				return EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Failed;
+			}
+			else
+			{
+				return EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_None;
+			}
+		}
+		else
+		{
+			return EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_None;
+		}
+
+	}
 
 	bool UseSimplifyMatch = (CurrentCheckInputIndex != LastDirectionInputIndex);
 
-	EInputCheckResult Resutlt = CurrentCheckInputConfig.CheckInput(ActionInputData);
+	EInputCheckResult Resutlt = CurrentCheckInputConfig.CheckInput(ActionInputData, UseSimplifyMatch);
 
 
 	EFightActionInputTriggerCheckResult FightActionInputTriggerCheckResult = EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_None;
@@ -33,6 +89,7 @@ EFightActionInputTriggerCheckResult UFightActionInputTrigger::ReciveInput(uint8 
 	{
 		if (CurrentCheckInputIndex == CurrentLastCheckInputIndex)
 		{
+			FightActionInputTriggerState = EFightActionInputTriggerState::FightActionInputTriggerState_Complete;
 			FightActionInputTriggerCheckResult = EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Completed;
 		}
 		else
@@ -42,48 +99,51 @@ EFightActionInputTriggerCheckResult UFightActionInputTrigger::ReciveInput(uint8 
 
 			if (NextInputCheckConfig.InputConfig == CurrentCheckInputConfig.InputConfig)
 			{
-				CurrentLastCheckInputIndex++;
-				CurrentLastDirectionInputIndex++;
+				//CurrentLastCheckInputIndex++;
+				//CurrentLastDirectionInputIndex++;
 
-				FInputCheckConfig NewCurrentCheckInputConfig = FInputCheckConfig(NextInputCheckConfig, CurrentCheckInputConfig);
-				CurrentCheckInputConfig.SetUp(NewCurrentCheckInputConfig);
+				//FInputCheckConfig NewCurrentCheckInputConfig = FInputCheckConfig(FInputCheckConfig(), CurrentCheckInputConfig);
+				//CurrentCheckInputConfig.SetUp(NewCurrentCheckInputConfig);
+				CurrentCheckInputConfig = FInputCheckConfig(FInputCheckConfig(CurrentCheckInputConfig.MaxCheckFrame), CurrentCheckInputConfig);
 			}
 			else
 			{
 				CurrentCheckInputIndex = NextInputCheckConfigIndex;
 
-				FInputCheckConfig NewCurrentCheckInputConfig = FInputCheckConfig(NextInputCheckConfig,CurrentCheckInputConfig);
-
-				CurrentCheckInputConfig.InputConfig = NewCurrentCheckInputConfig.InputConfig;
-				CurrentCheckInputConfig.PreInputConfig = NewCurrentCheckInputConfig.PreInputConfig;
-				CurrentCheckInputConfig.MaxCheckFrame = NewCurrentCheckInputConfig.MaxCheckFrame;
-				CurrentCheckInputConfig.CurrentCheckFrame = 0;
+				CurrentCheckInputConfig = FInputCheckConfig(NextInputCheckConfig, CurrentCheckInputConfig);
+				//FInputCheckConfig NewCurrentCheckInputConfig = FInputCheckConfig(NextInputCheckConfig,CurrentCheckInputConfig);
+				//CurrentCheckInputConfig.SetUp(NewCurrentCheckInputConfig);
 			}
 
+			FightActionInputTriggerState = EFightActionInputTriggerState::FightActionInputTriggerState_InProgress;
 			FightActionInputTriggerCheckResult = EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Success;
 		}
 	}
 		break;
 	case EInputCheckResult::InputCheckResult_Failed:
 	{
+		PreCheckInputData = 0;
 		CurrentCheckInputIndex = 0;
 		CurrentLastCheckInputIndex = LastCheckInputIndex;
 		CurrentLastDirectionInputIndex = LastDirectionInputIndex;
 
 		CurrentCheckInputConfig = CheckInputConfig[CurrentCheckInputIndex];
 
+		FightActionInputTriggerState = EFightActionInputTriggerState::FightActionInputTriggerState_Idle;
 		FightActionInputTriggerCheckResult = EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_Failed;
 
 		break;
 	}
 	case EInputCheckResult::InputCheckResult_TimeOut:
 	{
+		PreCheckInputData = 0;
 		CurrentCheckInputIndex = 0;
 		CurrentLastCheckInputIndex = LastCheckInputIndex;
 		CurrentLastDirectionInputIndex = LastDirectionInputIndex;
 
 		CurrentCheckInputConfig = CheckInputConfig[CurrentCheckInputIndex];
 
+		FightActionInputTriggerState = EFightActionInputTriggerState::FightActionInputTriggerState_Idle;
 		FightActionInputTriggerCheckResult = EFightActionInputTriggerCheckResult::FightActionInputTriggerCheckResult_TimeOut;
 	}
 		break;
